@@ -2,13 +2,13 @@
 #Configure a Ubuntu 14.04 LTS server as an ELK stack for forensicating with plaso
 #Will install and configure:
 #    Elasticsearch 1.2.4
-#    Logstash 2.2.2-1
+#    Logstash 1.5.4
 #    Kibana 3.1.0
 #    Nginx 
 
 esURL="https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.2.4.deb"
 kibanaURL="https://download.elasticsearch.org/kibana/kibana/kibana-3.1.0.tar.gz"
-logstashURL="https://download.elastic.co/logstash/logstash/packages/debian/logstash_2.2.2-1_all.deb"
+logstashURL="https://download.elastic.co/logstash/logstash/packages/debian/logstash_1.5.4-1_all.deb"
 ip=$(ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1)
 
 sudo apt-get update && sudo apt-get install -y default-jre-headless git-core nginx
