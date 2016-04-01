@@ -1,50 +1,54 @@
 #!/bin/sh
-#Configure a Ubuntu 14.04 LTS server as an ELK stack for forensicating with plaso
-#Will install and configure:
-#    Elasticsearch 1.2.4
-#    Logstash 1.5.4
-#    Kibana 3.1.0
-#    Nginx 
+#Elastic2.2.1
+#Logstash 2.2
+#kibana4.4.2
+#Nginx reverse proxy kibana to port 80
 
-esURL="https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.2.4.deb"
-kibanaURL="https://download.elasticsearch.org/kibana/kibana/kibana-3.1.0.tar.gz"
-logstashURL="https://download.elastic.co/logstash/logstash/packages/debian/logstash_1.5.4-1_all.deb"
-ip=$(ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1)
 
-sudo apt-get update && sudo apt-get install -y default-jre-headless git-core nginx
+sudo -E apt-get update && sudo apt-get upgrade -y
 
-cd /tmp 
-wget $esURL 
-dpkg -i elastic*.deb
-update-rc.d elasticsearch defaults 95 10
-sudo /etc/init.d/elasticsearch restart
-cd /usr/share/elasticsearch/bin
-./plugin install royrusso/elasticsearch-HQ
-rm /tmp/elasticsearch-1.2.4.deb
+wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+echo "deb http://packages.elastic.co/logstash/2.2/debian stable main" | sudo tee -a /etc/apt/sources.list
+echo 'deb http://packages.elastic.co/elasticsearch/2.x/debian stable main' | sudo tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
+echo 'deb http://packages.elastic.co/kibana/4.4/debian stable main' | sudo tee -a /etc/apt/sources.list.d/kibana-4.4.x.list
 
-cd /usr/share/nginx/html
-rm index.html
-wget $kibanaURL
-tar xzf kibana-3.1.0.tar.gz -C /usr/share/nginx/html --strip 1
-rm kibana-3.1.0.tar.gz
 
-cd /tmp
-wget $logstashURL
-dpkg -i logstash*.deb
-rm logstash*.deb
-sudo service logstash start
+sudo -E add-apt-repository -y ppa:webupd8team/java
 
-cd ~/
-git clone https://github.com/iandday/FELK
-cd FELK
-sudo cp plasol2tcsv.conf /etc/logstash/conf.d/
-sudo cp plasol2tcsv.json /usr/share/nginx/html/app/dashboards/plasol2tcsv.json
+sudo -E apt-get update && sudo -E apt-get -y install oracle-java8-installer elasticsearch logstash kibana nginx apache2-utils curl cifs-utils git
+
+sudo echo 'network.host: localhost' >> /etc/elasticsearch/elasticsearch.yml
+sudo echo 'server.host: "localhost"' >> /opt/kibana/config/kibana.yml
+
+sudo update-rc.d elasticsearch defaults 95 10
+sudo update-rc.d kibana defaults 96 9
+sudo service elasticsearch restart
+sudo service kibana start
+sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.old
+
+
+sudo echo 'server {' > /etc/nginx/sites-available/default
+sudo echo '      listen 80; ' >> /etc/nginx/sites-available/default
+sudo echo '      server_name example.com;' >> /etc/nginx/sites-available/default
+sudo echo '      location / {' >> /etc/nginx/sites-available/default
+sudo echo '          proxy_pass http://localhost:5601;' >> /etc/nginx/sites-available/default
+sudo echo '          proxy_http_version 1.1;' >> /etc/nginx/sites-available/default
+sudo echo '          proxy_set_header        Host $host;' >> /etc/nginx/sites-available/default
+sudo echo '          proxy_set_header        Referer "";' >> /etc/nginx/sites-available/default
+sudo echo '          proxy_set_header        X-Real-IP $remote_addr;' >> /etc/nginx/sites-available/default
+sudo echo '          proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;' >> /etc/nginx/sites-available/default
+sudo echo '              }' >> /etc/nginx/sites-available/default
+sudo echo '      }' >> /etc/nginx/sites-available/default
+
+sudo mkdir /usr/local/logstash-plaso
+cd /usr/local
+git clone https://github.com/iandday/FELK.git
+sudo ln -s /usr/local/FELK/plasol2tcsv.conf /etc/logstash/conf.d/plasol2tcsv.conf
+
+sudo service nginx restart
 sudo service logstash restart
 
-echo "Installation complete"
-echo ""
-echo "Elasticsearch HQ Dashboard accessible at http://$ip:9200/_plugin/HQ/"
-echo "Kibana interface accessible at http://$ip"
-echo "Plaso l2tcsv dashboard accessible at http://$ip/index.html#/dashboard/file/plasol2tcsv.json"
-echo "  Load l2tcsv file for viewing by substituting file name in the below command:"
-echo "    cat timeline.csv | nc 127.0.0.1 18005"
+
+echo "Install complete, ingestion folder located at /usr/local/logstash-plaso"
+echo "  Create a subdirectory with the casename and place relevant Plaso CSV files inside to be ingested"
+echo "  All records will be tagged with the case directory name as well as the CSV filename"
