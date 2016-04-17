@@ -8,8 +8,8 @@
 sudo -E apt-get update && sudo apt-get upgrade -y
 
 wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
-echo "deb http://packages.elastic.co/logstash/2.2/debian stable main" | sudo tee -a /etc/apt/sources.list
-echo 'deb http://packages.elastic.co/elasticsearch/2.x/debian stable main' | sudo tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
+echo "deb http://packages.elastic.co/logstash/1.5/debian stable main" | sudo tee -a /etc/apt/sources.list
+echo 'deb http://packages.elastic.co/elasticsearch/1.7/debian stable main' | sudo tee -a /etc/apt/sources.list.d/elasticsearch-1.7.list
 #echo 'deb http://packages.elastic.co/kibana/4.4/debian stable main' | sudo tee -a /etc/apt/sources.list.d/kibana-4.4.x.list
 
 
@@ -17,7 +17,11 @@ sudo -E add-apt-repository -y ppa:webupd8team/java
 
 sudo -E apt-get update && sudo -E apt-get -y install oracle-java8-installer elasticsearch logstash nginx apache2-utils curl cifs-utils git
 
-sudo echo 'network.host: localhost' >> /etc/elasticsearch/elasticsearch.yml
+sudo echo 'http.cors.allow-origin: "/.*/"' >> /etc/elasticsearch/elasticsearch.yml
+sudo echo 'http.cors.enabled: true' >> /etc/elasticsearch/elasticsearch.yml
+
+
+
 #sudo echo 'server.host: "localhost"' >> /opt/kibana/config/kibana.yml
 
 sudo update-rc.d elasticsearch defaults 95 10
@@ -59,3 +63,4 @@ sudo service logstash restart
 echo "Install complete, ingestion folder located at /usr/local/logstash-plaso"
 echo "  Create a subdirectory with the casename and place relevant Plaso CSV files inside to be ingested"
 echo "  All records will be tagged with the case directory name as well as the CSV filename"
+
